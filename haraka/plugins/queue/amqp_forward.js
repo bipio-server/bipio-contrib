@@ -1,8 +1,7 @@
 // forwards to the public queue
-var dao = require(process.cwd() + '/src/bootstrap.js');
-var Bastion = require(process.cwd() + '/src/managers/bastion').Bastion;
-
-var bastion = new Bastion(dao, true);
+process.HEADLESS = true;
+var dao = require(__dirname + '/../../../../src/bootstrap.js');
+var bastion = dao.app.bastion;
 
 exports.hook_queue = function (next, connection) {
     var config = this.config.get('amqp.ini');
