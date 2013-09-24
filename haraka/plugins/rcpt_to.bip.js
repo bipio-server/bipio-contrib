@@ -21,25 +21,37 @@
  * A Bipio Commercial OEM License may be obtained via enquiries@cloudspark.com.au
  */
 process.HEADLESS = true;
-var dao = require(__dirname + '/../../../src/bootstrap.js');
-var bastion = dao.app.bastion;
+//var bootstrap = require(__dirname + '/../../../src/bootstrap.js'),
+var bootstrap = require(process.env.BIPIO_SERVER_ROOT + '/src/bootstrap.js'),
+    bastion = bootstrap.app.bastion,
+    log = bootstrap.app.logmessage;
 
 function attachment() {
-  return function() {
-    var bufs = Buffers()
-      , doc = {_attachments: {}}
-      , filename
-      ;
-    return {
-      start: function(content_type, name) {
-        filename = name;
-        doc._attachments[filename] = {content_type: content_type.replace(/\n/g, " ")};
-      },
-      data: function(data) { bufs.push(data) },
-      end: function() { if(filename) doc._attachments[filename]['data'] = bufs.slice().toString('base64') },
-      doc: function() { return doc }
+    return function() {
+        var bufs = Buffers()
+        , doc = {
+            _attachments: {}
     }
-  }();
+    , filename
+    ;
+    return {
+        start: function(content_type, name) {
+            filename = name;
+            doc._attachments[filename] = {
+                content_type: content_type.replace(/\n/g, " ")
+                };
+        },
+        data: function(data) {
+            bufs.push(data)
+        },
+        end: function() {
+            if(filename) doc._attachments[filename]['data'] = bufs.slice().toString('base64')
+        },
+        doc: function() {
+            return doc
+        }
+    }
+}();
 }
 
 
@@ -54,29 +66,12 @@ exports.hook_data = function (next, connection) {
             stream.connection = connection;
             var ct = connection.transaction;
             stream.pause();
-            /*
-            var tmpFile = dao.cdn.tmpStream(stream, connection.transaction._bipMeta.id, contentType, fileName, function(err, path, contentType, fileName, stats) {
-                if (!err) {         
-                    connection.loginfo('proessed??? ');        
-                    ct._tmp_attached_files.push(
-                        dao.cdn.normedMeta('haraka', connection.uuid, {
-                            size : stats.size,
-                            localpath : path,
-                            name : fileName,
-                            type : fileName.split('.').pop(),
-                            encoding : stream.encoding,
-                            content_type : contentType
-                        })
-                    );
-                        
-                connection.loginfo('--------- normed meta');
-                }
-            });            */
-            
+
             // @todo - on error handling here!
-            var tmpFile = dao.cdn.tmpStream(stream, connection.transaction._bipMeta.id);            
+            var tmpFile = bootstrap.app.dao.cdn.tmpStream(stream, connection.transaction._bipMeta.id);
+            
             ct._tmp_attached_files.push(
-                dao.cdn.normedMeta('haraka', connection.uuid, {
+                bootstrap.app.dao.cdn.normedMeta('haraka', connection.uuid, {
                     localpath : tmpFile,
                     name : fileName,
                     type : fileName.split('.').pop(),
@@ -84,9 +79,9 @@ exports.hook_data = function (next, connection) {
                     content_type : contentType
                 })
             );
-            
+
         }
-    );
+        );
 
     next();
 };
@@ -100,32 +95,49 @@ exports.register = function() {
 }
 
 exports.rcpt_to_bip = function(next, connection, params) {
-    var plugin = this;
-    var rcpt_to = params[0],
-        clientInfo;
-
+    var plugin = this,
+        ct = connection.transaction,
+        rcpt_to = params[0],
+        client;
+ 
     if (rcpt_to.address()) {
+        client = {
+            'id' : ct.uuid,
+            'host' : connection.remote_ip,
+            'date' : Math.floor(new Date().getTime() / 1000),
+            'proto' : 'http',
+            'reply_to' : ct.mail_from.user + '@' + ct.mail_from.host,
+            'method' : 'smtp',
+            'content_type' : ct.ct,
+            'encoding' : ct.body_encoding
+        };
 
-        clientInfo = {
-            remote_ip : connection.remote_ip,
-            remote_sender : connection.transaction.mail_from.user
-                            + '@'
-                            + connection.transaction.mail_from.host
-        }
-        connection.transaction._clientInfo = clientInfo;
+        ct._clientInfo = client;
 
-        // connection.loginfo('UNPACKING ---- ');
-        bastion.domainBipUnpack(
-                        rcpt_to.user,
-                        rcpt_to.host,
-                        connection.transaction,
+        bootstrap.app.dao.domainAuth(
+            rcpt_to.host,
+            true,
+            function(err, accountInfo) {
+                if (err) {
+                    next(DENY);
+                } else {
+                    bastion.bipUnpack(
                         'smtp',
-                        next,
+                        rcpt_to.user,
+                        accountInfo,
+                        client,
+                        function(status, message, bip) {
+                            ct._bipMeta = bip;
+                            next(status, message);
+                        },
                         {
                             'success' : OK,
                             'fail' : DENY
                         }
                     );
+                }
+            }
+        );
     } else {
         return next();
     }
