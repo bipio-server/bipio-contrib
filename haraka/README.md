@@ -17,9 +17,11 @@ queue/bip_forward
   The plugins will look for the existence of the `BIPIO_SERVER_ROOT` environment
 variable to find the Bipio server bootstrap, so set this to your installation path.
 
+A sample upstart script `upstart_haraka.conf` has been included for reference, it shows how this environment variable should be set.
+
 How ever else Haraka is configured is up to you, it's [extensively documented](http://haraka.github.io).
 
-A sample upstart script `upstart_haraka.conf` has been included for reference.
+
 
 ## Testing SMTP
 
