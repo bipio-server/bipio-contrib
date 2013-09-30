@@ -26,18 +26,26 @@
 
 process.HEADLESS = true;
 var bootstrap = require(process.env.BIPIO_SERVER_ROOT + '/src/bootstrap.js'),
-    bastion = bootstrap.app.bastion,
-    log = bootstrap.app.logmessage;
+bastion = bootstrap.app.bastion,
+log = bootstrap.app.logmessage;
+
+function setExport(body, exports) {
+    if (body.is_html && '' !== body.body_text_encoded) {
+        exports.source.body_html = body.body_text_encoded;
+    } else if ('' !== body.body_text_encoded) {
+        exports.source.body_text = body.body_text_encoded;
+    }
+}
 
 exports.hook_queue = function (next, connection) {
     var ct = connection.transaction,
-        body = ct.body,
-        client = ct._clientInfo,
-        contentType,
-        encoding,
-        subject = '',
-        parts = body ? body.children : null,
-        numParts = parts ? parts.length : 0;
+    body = ct.body,
+    client = ct._clientInfo,
+    contentType,
+    encoding,
+    subject = '',
+    parts = body ? body.children : null,
+    numParts = parts ? parts.length : 0;
 
     if (undefined != ct.header.headers_decoded.subject) {
         subject = ct.header.headers_decoded.subject[0];
@@ -57,26 +65,28 @@ exports.hook_queue = function (next, connection) {
         for (var i = 0; i < numParts; i++) {
             p = parts[i];
             body = p.body;
-            if (body) {
-                if (body.is_html) {
-                    exports.source.body_html = body.body_text_encoded;
-                } else {
-                    exports.source.body_text = ct.body_text_encoded;
+            if (p.children && p.children.length > 0) {
+                for (var j = 0; j < p.children.length; j++) {
+                    setExport(p.children[j], exports);
+                    encoding = p.children[j].body_encoding;
+                    contentType = p.children[j].ct;
                 }
+
+            } else if (body) {
+                setExport(body, exports)
                 encoding = body.body_encoding;
                 contentType = body.ct;
+
+            } else {
+                setExport(p, exports);
+                encoding = p.body_encoding;
+                contentType = p.ct;
             }
         }
     } else {
-        if (body && '' != body.bodytext) {
-            if (body.is_html) {
-                exports.source.body_html = body.body_text_encoded;
-            } else {
-                exports.source.body_text = body.body_text_encoded;
-            }
-            encoding = body.body_encoding;
-            contentType = body.ct;
-        }
+        setExport(body, exports);
+        encoding = body.body_encoding;
+        contentType = body.ct;
     }
 
     exports._client = client;
