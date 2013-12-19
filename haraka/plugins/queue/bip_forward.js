@@ -30,12 +30,13 @@ bastion = bootstrap.app.bastion,
 log = bootstrap.app.logmessage;
 
 function setExport(body, exports) {
-    if (body.is_html && '' !== body.body_text_encoded) {
-        exports.source.body_html = body.body_text_encoded;
-    } else if ('' !== body.body_text_encoded) {
-        exports.source.body_text = body.body_text_encoded;
+    if (body.is_html) {
+        exports.source.body_html = body.bodytext;
+    } else {
+        exports.source.body_text = body.bodytext;
     }
 }
+
 
 exports.hook_queue = function (next, connection) {
     var ct = connection.transaction,
