@@ -69,7 +69,7 @@ exports.hook_data = function (next, connection) {
 
             // @todo - on error handling here!
             var tmpFile = bootstrap.app.dao.cdn.tmpStream(stream, connection.transaction._bipMeta.id);
-            
+
             ct._tmp_attached_files.push(
                 bootstrap.app.dao.cdn.normedMeta('haraka', connection.uuid, {
                     localpath : tmpFile,
@@ -99,7 +99,7 @@ exports.rcpt_to_bip = function(next, connection, params) {
         ct = connection.transaction,
         rcpt_to = params[0],
         client;
- 
+
     if (rcpt_to.address()) {
         client = {
             'id' : ct.uuid,
@@ -126,13 +126,13 @@ exports.rcpt_to_bip = function(next, connection, params) {
                         rcpt_to.user,
                         accountInfo,
                         client,
-                        function(status, message, bip) {
-                            ct._bipMeta = bip;
-                            next(status, message);
-                        },
-                        {
-                            'success' : OK,
-                            'fail' : DENY
+                        function(err, bip) {
+                            if (err) {
+                                next(DENY, err)
+                            } else {
+                                ct._bipMeta = bip;
+                                next(OK 'OK')
+                            }
                         }
                     );
                 }
