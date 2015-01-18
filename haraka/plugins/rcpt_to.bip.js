@@ -114,9 +114,8 @@ exports.rcpt_to_bip = function(next, connection, params) {
 
         ct._clientInfo = client;
 
-        bootstrap.app.dao.domainAuth(
+        bootstrap.app.modules.auth.domainAuth(
             rcpt_to.host,
-            true,
             function(err, accountInfo) {
                 if (err) {
                     next(DENY);
@@ -131,7 +130,7 @@ exports.rcpt_to_bip = function(next, connection, params) {
                                 next(DENY, err)
                             } else {
                                 ct._bipMeta = bip;
-                                next(OK 'OK')
+                                next(OK, 'OK')
                             }
                         }
                     );
