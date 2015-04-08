@@ -107,23 +107,57 @@ StatModule.prototype = {
 
             Q.all(promises).then(
               function(structs) {
-                next(false, structs);
+                var
+                  ttfbTotal = 0
+                  ttfbDivisor = 0;
+
+                for (var i = 0; i < structs.length; i++) {
+                  if (structs[i].ttfb) {
+                    ttfbTotal += structs[i].ttfb;
+                    ttfbDivisor++;
+                  }
+                }
+
+                next(
+                  false,
+                  {
+                    since : then,
+                    count : structs.length,
+                    ttfb_avg : ttfbDivisor ? ttfbTotal / ttfbDivisor : 0,
+                    ttfb_pct : structs.length ? ttfbDivisor / structs.length : 0,
+                    stat : structs
+                  }
+                );
               },
               function(err) {
                 next(err);
               }
             );
           } else {
-            next(err, []);
+            next(err, {});
           }
         }
       }
     );
   },
+  bips : function(next) {
+    this.dao.findFilter(
+      'bip',
+      {},
+      function(err, results) {
+        if (err) {
+          next(err);
+        } else {
+          next(false, results.length);
+        }
+      }
+    );
+  },
+  // @todo - created timestamp resolution mismatch? ms or seconds?
   recentBips : function(next) {
     var self = this,
-      now = nowUTCSeconds() / 1000,
-      then = now - (60 * 60 * 24);
+      now = nowUTCSeconds(),
+      then = now - (60 * 60 * 24 * 1000);
 
     this.dao.findFilter(
       'bip',
@@ -160,7 +194,7 @@ StatModule.prototype = {
   },
   routes : function(app, authWrapper) {
     var self = this;
-    app.get('/rpc/stats/:stat/:mode', authWrapper, function(req, res) {
+    app.get('/rpc/stats/:stat/:mode?', authWrapper, function(req, res) {
       if (req.user && req.user.user.is_admin && req.params.stat) {
         switch (req.params.stat) {
           case 'users' :
@@ -171,10 +205,14 @@ StatModule.prototype = {
             }
             break;
           case 'bips' :
-            if ('recent' === req.params.mode) {
-              self.recentBips(self._respond(req.params.stat, res));
+            if (req.params.mode) {
+              if ('recent' === req.params.mode) {
+                self.recentBips(self._respond(req.params.stat, res));
+              } else {
+                self._notFound(res);
+              }
             } else {
-              self._notFound(res);
+              self.bips(self._respond(req.params.stat, res));
             }
             break;
           default :
