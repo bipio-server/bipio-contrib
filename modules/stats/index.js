@@ -35,7 +35,7 @@
  *
  */
 
-var Q = require('Q');
+var Q = require('q');
 
 function StatModule(options) {
   this.options = options;
