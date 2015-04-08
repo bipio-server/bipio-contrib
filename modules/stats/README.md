@@ -2,8 +2,11 @@
 
   Adds statistics routes for admin users
  
-     /rpc/stats/bips/recent - returns # of bips created in last day
-     /rpc/stats/users/recent - returns engagement stats for new users in last day
+    /rpc/stats/bips - returns # of bips
+    /rpc/stats/bips/recent - returns # of bips created in last day
+    /rpc/stats/users - returns # of users
+    /rpc/stats/users/recent - returns engagement stats for new users in last day
+    /rpc/stats/users/returning - returns # of returning users in last day
 
 #### Constructor
 
