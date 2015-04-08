@@ -41,13 +41,8 @@ function StatModule(options) {
   this.options = options;
 }
 
-function toUTC(date) {
-  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
-};
-
-function nowUTCSeconds() {
-  var d = toUTC(new Date());
-  return d.getTime();
+function nowUTCMSeconds() {
+  return new Date().getTime();
 }
 
 StatModule.prototype = {
@@ -64,9 +59,38 @@ StatModule.prototype = {
       }
     );
   },
+  returningUsers : function(next) {
+    var self = this,
+      now = Math.floor(nowUTCMSeconds() / 1000),
+      then = now - (60 * 60 * 24);
+
+    this.dao.findFilter(
+      'account',
+      {
+        last_session : {
+          '$gt' : then
+        }
+      },
+      function(err, results) {
+        var defer, promises = [];
+
+        if (err) {
+          next(err);
+        } else {
+          next(
+            false,
+            {
+              count : results.length,
+              since : then,
+              now : now
+            })
+        }
+      }
+    );
+  },
   recentUsers : function(next) {
     var self = this,
-      now = nowUTCSeconds() / 1000,
+      now = Math.floor(nowUTCMSeconds() / 1000),
       then = now - (60 * 60 * 24);
 
     this.dao.findFilter(
@@ -168,7 +192,7 @@ StatModule.prototype = {
   // @todo - created timestamp resolution mismatch? ms or seconds?
   recentBips : function(next) {
     var self = this,
-      now = nowUTCSeconds(),
+      now = nowUTCMSeconds(),
       then = now - (60 * 60 * 24 * 1000);
 
     this.dao.findFilter(
@@ -211,8 +235,14 @@ StatModule.prototype = {
         switch (req.params.stat) {
           case 'users' :
             if (req.params.mode) {
+              // recent signup stats
               if ('recent' === req.params.mode) {
                 self.recentUsers(self._respond(req.params.stat, res));
+
+              // returning users stats
+              } else if ('returning') {
+                self.returningUsers(self._respond(req.params.stat, res));
+
               } else {
                 self._notFound(res);
               }
