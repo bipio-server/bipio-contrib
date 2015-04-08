@@ -51,6 +51,19 @@ function nowUTCSeconds() {
 }
 
 StatModule.prototype = {
+  users : function(next) {
+    this.dao.findFilter(
+      'account_option',
+      {},
+      function(err, results) {
+        if (err) {
+          next(err);
+        } else {
+          next(false, results.length);
+        }
+      }
+    );
+  },
   recentUsers : function(next) {
     var self = this,
       now = nowUTCSeconds() / 1000,
@@ -83,8 +96,6 @@ StatModule.prototype = {
                       username : account.username,
                       email_account : account.email_account
                     },
-                    now : now,
-                    then : then,
                     total : 0,
                     acct_diff_seconds : 0,
                     ttfb : 0 // time to first bip (seconds)
@@ -121,6 +132,7 @@ StatModule.prototype = {
                 next(
                   false,
                   {
+                    now : now,
                     since : then,
                     count : structs.length,
                     ttfb_avg : ttfbDivisor ? ttfbTotal / ttfbDivisor : 0,
@@ -198,10 +210,14 @@ StatModule.prototype = {
       if (req.user && req.user.user.is_admin && req.params.stat) {
         switch (req.params.stat) {
           case 'users' :
-            if ('recent' === req.params.mode) {
-              self.recentUsers(self._respond(req.params.stat, res));
+            if (req.params.mode) {
+              if ('recent' === req.params.mode) {
+                self.recentUsers(self._respond(req.params.stat, res));
+              } else {
+                self._notFound(res);
+              }
             } else {
-              self._notFound(res);
+              self.users(self._respond(req.params.stat, res));
             }
             break;
           case 'bips' :
