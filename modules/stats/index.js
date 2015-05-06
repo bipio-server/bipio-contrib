@@ -35,7 +35,8 @@
  *
  */
 
-var Q = require('q');
+var Q = require('q'),
+  _ = require('underscore');
 
 function StatModule(options) {
   this.options = options;
@@ -84,6 +85,59 @@ StatModule.prototype = {
               since : then,
               now : now
             })
+        }
+      }
+    );
+  },
+
+  leadUsers : function(next) {
+    var self = this,
+      leaderboard = [];
+
+    this.dao.aggregate(
+      'bip',
+      [
+        {
+          $group : {
+            '_id' : "$owner_id",
+            'bips' : {
+              $push : { name : "$name", type : "$type" }
+            },
+            'count' : {
+              $sum : 1
+            }
+          }
+        }
+      ],
+      function(err, results) {
+        if (err) {
+          next(err);
+        } else {
+          for (var i = 0; i < results.length; i++) {
+            (function(aggResults, idx) {
+              // get account
+              self.dao.find('account', { id : aggResults[idx]._id }, function(err, result) {
+                if (err) {
+                  next(err);
+                } else {
+
+                  if (result) {
+                    aggResults[idx].username = result.username;
+                    aggResults[idx].name = result.name;
+                    aggResults[idx].email_account = result.email_account;
+                  } else {
+                    aggResults[idx].username = '__DEFUNCT__';
+                  }
+
+                  leaderboard.push(aggResults[idx]);
+
+                  if (idx >= results.length - 1) {
+                    next(false, _.sortBy(leaderboard, 'count').reverse() );
+                  }
+                }
+              });
+            })(results, i);
+          }
         }
       }
     );
@@ -240,8 +294,11 @@ StatModule.prototype = {
                 self.recentUsers(self._respond(req.params.stat, res));
 
               // returning users stats
-              } else if ('returning') {
+              } else if ('returning' === req.params.mode) {
                 self.returningUsers(self._respond(req.params.stat, res));
+
+              } else if ('leaderboard' === req.params.mode) {
+                self.leadUsers(self._respond(req.params.stat, res));
 
               } else {
                 self._notFound(res);
