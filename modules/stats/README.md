@@ -7,6 +7,7 @@
     /rpc/stats/users - returns # of users
     /rpc/stats/users/recent - returns engagement stats for new users in last day
     /rpc/stats/users/returning - returns # of returning users in last day
+    /rpc/stats/users/leaderboard - get leaderboard info
 
 #### Constructor
 
