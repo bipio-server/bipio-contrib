@@ -101,7 +101,13 @@ StatModule.prototype = {
           $group : {
             '_id' : "$owner_id",
             'bips' : {
-              $push : { name : "$name", type : "$type" }
+              $push : {
+                name : "$name",
+                type : "$type",
+                paused : "$paused",
+                _last_run : "$_last_run",
+                _channel_idx : "$_channel_idx"
+              }
             },
             'count' : {
               $sum : 1
@@ -115,27 +121,53 @@ StatModule.prototype = {
         } else {
           for (var i = 0; i < results.length; i++) {
             (function(aggResults, idx) {
-              // get account
-              self.dao.find('account', { id : aggResults[idx]._id }, function(err, result) {
-                if (err) {
-                  next(err);
-                } else {
+              var channels = _.uniq(_.flatten(_.pluck(aggResults[idx].bips, '_channel_idx')));
 
-                  if (result) {
-                    aggResults[idx].username = result.username;
-                    aggResults[idx].name = result.name;
-                    aggResults[idx].email_account = result.email_account;
-                  } else {
-                    aggResults[idx].username = '__DEFUNCT__';
+              // get channels
+              self.dao.findFilter(
+                'channel',
+                {
+                  owner_id : aggResults[idx]._id,
+                  id : {
+                    $in : channels
                   }
+                },
+                function(err, channelResults) {
+                  if (err) {
+                    next(err);
+                  } else {
+                    var manifest = [];
+                    _.each(channelResults, function(result) {
+                      manifest.push(result.action)
+                    });
+                    manifest = _.uniq(manifest).sort();
 
-                  leaderboard.push(aggResults[idx]);
+                    aggResults[idx].actions = manifest;
 
-                  if (idx >= results.length - 1) {
-                    next(false, _.sortBy(leaderboard, 'count').reverse() );
+                    // get account
+                    self.dao.find('account', { id : aggResults[idx]._id }, function(err, result) {
+                      if (err) {
+                        next(err);
+                      } else {
+
+                        if (result) {
+                          aggResults[idx].username = result.username;
+                          aggResults[idx].name = result.name;
+                          aggResults[idx].email_account = result.email_account;
+                        } else {
+                          aggResults[idx].username = '__DEFUNCT__';
+                        }
+
+                        leaderboard.push(aggResults[idx]);
+
+                        if (idx >= results.length - 1) {
+                          next(false, _.sortBy(leaderboard, 'count').reverse() );
+                        }
+                      }
+                    });
                   }
                 }
-              });
+              );
             })(results, i);
           }
         }
