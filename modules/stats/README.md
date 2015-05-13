@@ -6,6 +6,7 @@
     /rpc/stats/bips/recent - returns # of bips created in last day
     /rpc/stats/users - returns # of users
     /rpc/stats/users/recent - returns engagement stats for new users in last day
+    /rpc/stats/users/all - returns engagement stats for all users (optional fromUnix and toUnix GET parameters will control creation date window)
     /rpc/stats/users/returning - returns # of returning users in last day
     /rpc/stats/users/leaderboard - get leaderboard info
 
