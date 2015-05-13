@@ -306,23 +306,56 @@ StatModule.prototype = {
     );
   },
   // @todo - created timestamp resolution mismatch? ms or seconds?
-  recentBips : function(next) {
+  recentBips : function(next, fromUnix, toUnix) {
     var self = this,
       now = nowUTCMSeconds(),
-      then = now - (60 * 60 * 24 * 1000);
+      then = now - (60 * 60 * 24 * 1000),
+      filter = {},
+      dayGroup = false;
+
+    if (undefined === fromUnix && undefined === toUnix) {
+      filter.created = {
+        '$gt' : then
+      };
+    } else {
+      //
+      if (fromUnix  && fromUnix > 0) {
+        filter.created = {
+          '$gt' : fromUnix
+        };
+      }
+
+      //
+      if (toUnix  && toUnix > 0) {
+        if (!filter.created) {
+          filter.created = {};
+        }
+
+        filter.created['$lt'] = toUnix;
+      }
+      dayGroup = true;
+    }
 
     this.dao.findFilter(
       'bip',
-      {
-        created : {
-          '$gt' : then
-        }
-      },
+      filter,
       function(err, results) {
         if (err) {
           next(err);
         } else {
-          next(false, results.length);
+          var dayResults = {}, bipDate;
+          if (dayGroup) {
+            for (var i = 0; i < results.length; i++) {
+              bipDate = moment(results[i].created).format('YYYYMMDD');
+              if (!dayResults[bipDate]) {
+                dayResults[bipDate] = 0;
+              }
+              dayResults[bipDate]++;
+            }
+            next(false, dayResults);
+          } else {
+            next(false, results.length);
+          }
         }
       }
     );
@@ -376,6 +409,10 @@ StatModule.prototype = {
             if (req.params.mode) {
               if ('recent' === req.params.mode) {
                 self.recentBips(self._respond(req.params.stat, res));
+
+              } else if ('all' === req.params.mode) {
+                self.recentBips(self._respond(req.params.stat, res), req.query.fromUnix || 0, req.query.toUnix || 0);
+
               } else {
                 self._notFound(res);
               }
