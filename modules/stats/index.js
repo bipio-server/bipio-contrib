@@ -19,23 +19,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-/*
- *
- * To enable, add to server config 'modules' section :
- *
- *   "stats" : {
- *     "strategy" : "index"
- *   }
- *
- * Adds routes :
- *
- *    /rpc/stats/bips/recent - returns # of bips created in last day
- *    /rpc/stats/users/recent - returns engagement stats for new users in last day
- *
- */
-
 var Q = require('q'),
+  moment = require('moment'),
   _ = require('underscore');
 
 function StatModule(options) {
@@ -123,75 +108,119 @@ StatModule.prototype = {
             (function(aggResults, idx) {
               var channels = _.uniq(_.flatten(_.pluck(aggResults[idx].bips, '_channel_idx')));
 
-              // get channels
-              self.dao.findFilter(
-                'channel',
-                {
-                  owner_id : aggResults[idx]._id,
-                  id : {
-                    $in : channels
+              if (channels && channels.length) {
+                // get channels
+                self.dao.findFilter(
+                  'channel',
+                  {
+                    owner_id : aggResults[idx]._id,
+                    id : {
+                      $in : channels
+                    }
+                  },
+                  function(err, channelResults) {
+                    if (err) {
+                      next(err);
+                    } else {
+                      var manifest = [];
+                      _.each(channelResults, function(result) {
+                        manifest.push(result.action)
+                      });
+                      manifest = _.uniq(manifest).sort();
+
+                      aggResults[idx].actions = manifest;
+
+                      // get account
+                      self.dao.find('account', { id : aggResults[idx]._id }, function(err, result) {
+                        if (err) {
+                          next(err);
+                        } else {
+
+                          if (result) {
+                            aggResults[idx].username = result.username;
+                            aggResults[idx].name = result.name;
+                            aggResults[idx].email_account = result.email_account;
+                          } else {
+                            aggResults[idx].username = '__DEFUNCT__';
+                          }
+
+                          leaderboard.push(aggResults[idx]);
+
+                          if (idx >= results.length - 1) {
+                            next(false, _.sortBy(leaderboard, 'count').reverse() );
+                          }
+                        }
+                      });
+                    }
                   }
-                },
-                function(err, channelResults) {
+                );
+              } else {
+                // get account
+                self.dao.find('account', { id : aggResults[idx]._id }, function(err, result) {
                   if (err) {
                     next(err);
                   } else {
-                    var manifest = [];
-                    _.each(channelResults, function(result) {
-                      manifest.push(result.action)
-                    });
-                    manifest = _.uniq(manifest).sort();
 
-                    aggResults[idx].actions = manifest;
+                    if (result) {
+                      aggResults[idx].username = result.username;
+                      aggResults[idx].name = result.name;
+                      aggResults[idx].email_account = result.email_account;
+                    } else {
+                      aggResults[idx].username = '__DEFUNCT__';
+                    }
 
-                    // get account
-                    self.dao.find('account', { id : aggResults[idx]._id }, function(err, result) {
-                      if (err) {
-                        next(err);
-                      } else {
+                    leaderboard.push(aggResults[idx]);
 
-                        if (result) {
-                          aggResults[idx].username = result.username;
-                          aggResults[idx].name = result.name;
-                          aggResults[idx].email_account = result.email_account;
-                        } else {
-                          aggResults[idx].username = '__DEFUNCT__';
-                        }
-
-                        leaderboard.push(aggResults[idx]);
-
-                        if (idx >= results.length - 1) {
-                          next(false, _.sortBy(leaderboard, 'count').reverse() );
-                        }
-                      }
-                    });
+                    if (idx >= results.length - 1) {
+                      next(false, _.sortBy(leaderboard, 'count').reverse() );
+                    }
                   }
-                }
-              );
+                });
+              }
             })(results, i);
           }
         }
       }
     );
   },
-  recentUsers : function(next) {
+  recentUsers : function(next, fromUnix, toUnix) {
     var self = this,
       now = Math.floor(nowUTCMSeconds() / 1000),
-      then = now - (60 * 60 * 24);
+      then = now - (60 * 60 * 24),
+      filter = {};
+
+    if (undefined === fromUnix && undefined === toUnix) {
+      filter.created = {
+        '$gt' : then
+      };
+    } else {
+      //
+      if (fromUnix  && fromUnix > 0) {
+        filter.created = {
+          '$gt' : fromUnix
+        };
+      }
+
+      //
+      if (toUnix  && toUnix > 0) {
+        if (!filter.created) {
+          filter.created = {};
+        }
+
+        filter.created['$lt'] = toUnix;
+      }
+    }
 
     this.dao.findFilter(
       'account',
-      {
-        created : {
-          '$gt' : then
-        }
-      },
+      filter,
       function(err, results) {
         var defer, promises = [];
 
         if (err) {
           next(err);
         } else {
+
           if (results.length) {
             for (var i = 0; i < results.length; i++) {
               defer = Q.defer();
@@ -208,6 +237,7 @@ StatModule.prototype = {
                     },
                     total : 0,
                     acct_diff_seconds : 0,
+                    created_day : moment(account.created).format('YYYYMMDD'),
                     ttfb : 0 // time to first bip (seconds)
                   };
 
@@ -324,6 +354,9 @@ StatModule.prototype = {
               // recent signup stats
               if ('recent' === req.params.mode) {
                 self.recentUsers(self._respond(req.params.stat, res));
+
+              } else if ('all' === req.params.mode) {
+                self.recentUsers(self._respond(req.params.stat, res), req.query.fromUnix || 0, req.query.toUnix || 0);
 
               // returning users stats
               } else if ('returning' === req.params.mode) {
