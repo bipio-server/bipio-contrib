@@ -32,6 +32,20 @@ function nowUTCMSeconds() {
 }
 
 StatModule.prototype = {
+  actions : function(next) {
+  	actionsList = [];
+    this.dao.findFilter(
+	  'channels',
+	  {},
+	  function(err, results) {
+	    if (err) {
+		 next(err);
+		} else {
+		  next(false, results);
+		}
+	  }
+	);
+  },
   users : function(next) {
     this.dao.findFilter(
       'account_option',
@@ -405,6 +419,9 @@ StatModule.prototype = {
               self.users(self._respond(req.params.stat, res));
             }
             break;
+		  case 'actions' :
+		    self.actions(self._respond(req.params.stat, res));
+			break;
           case 'bips' :
             if (req.params.mode) {
               if ('recent' === req.params.mode) {
