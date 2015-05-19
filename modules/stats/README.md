@@ -4,6 +4,7 @@
  
     /rpc/stats/bips - returns # of bips
     /rpc/stats/bips/recent - returns # of bips created in last day
+    /rpc/stats/bips/running - returns # of distinct bips running and channels created, per day    
     /rpc/stats/bips/all - returns engagement stats for all users (optional fromUnix and toUnix GET parameters will control creation date window)    
     /rpc/stats/users - returns # of users
     /rpc/stats/users/recent - returns engagement stats for new users in last day
