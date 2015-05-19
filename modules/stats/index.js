@@ -373,7 +373,7 @@ StatModule.prototype = {
         }
         );
     },
-    runningBips : function(next) {
+    createdBips : function(next) {
       var self = this,
         filter = [
           {
@@ -399,6 +399,49 @@ StatModule.prototype = {
           next(err, results);
         }
       );
+    },
+    runningBips : function(next) {
+      var self = this;
+
+      self.dao.list('stats_account_network', undefined, 0, 1, [ 'day', 'asc' ], {}, function(err, modelName, results) {
+
+        if (err) {
+          next(err);
+        } else {
+          var stats = {},
+            r;
+
+          for (var i = 0; i < results.data.length; i++) {
+            r = results.data[i];
+
+            if (!stats[r.day]) {
+              stats[r.day] = {
+                src : 0,
+                edges : 0
+              }
+            }
+
+            _.each(r.data, function(value, ptr) {
+              var src = ptr.split(';').shift(),
+                tokens = src.split('#'),
+                pod;
+
+              if (0 === src.indexOf('bip') ) {
+                stats[r.day].src += value;
+              } else {
+                pod = self.dao.pod(tokens[0]);
+                if ('invoke' !== pod.getAction(tokens[1]).trigger ) {
+                  stats[r.day].src += value;
+                }
+              }
+
+              stats[r.day].edges += value
+            });
+
+          }
+          next(false, stats);
+        }
+      });
     },
     setDAO : function(dao) {
       this.dao = dao;
@@ -459,8 +502,11 @@ StatModule.prototype = {
               } else if ('all' === req.params.mode) {
                 self.recentBips(self._respond(req.params.stat, res), req.query.fromUnix || 0, req.query.toUnix || 0);
 
+              } else if ('created' === req.params.mode) {
+                self.createdBips(self._respond(req.params.stat, res));
+
               } else if ('running' === req.params.mode) {
-                self.runningBips(self._respond(req.params.stat, res), req.query.fromDate || 0, req.query.toDate || 0);
+                self.runningBips(self._respond(req.params.stat, res));
 
               } else {
                 self._notFound(res);
