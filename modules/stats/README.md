@@ -2,10 +2,14 @@
 
   Adds statistics routes for admin users
  
+    /rpc/stats/actions - returns # of channels
+    
     /rpc/stats/bips - returns # of bips
+    /rpc/stats/bips/all - returns engagement stats for all users (optional fromUnix and toUnix GET parameters will control creation date window)      
+    /rpc/stats/bips/created - returns bips and channels created per day    
     /rpc/stats/bips/recent - returns # of bips created in last day
-    /rpc/stats/bips/running - returns # of distinct bips running and channels created, per day    
-    /rpc/stats/bips/all - returns engagement stats for all users (optional fromUnix and toUnix GET parameters will control creation date window)    
+    /rpc/stats/bips/running - returns # of distinct bips and running edges per day 
+  
     /rpc/stats/users - returns # of users
     /rpc/stats/users/recent - returns engagement stats for new users in last day
     /rpc/stats/users/all - returns engagement stats for all users (optional fromUnix and toUnix GET parameters will control creation date window)
