@@ -37,7 +37,6 @@ function setExport(body, exports) {
     }
 }
 
-
 exports.hook_queue = function (next, connection) {
     var ct = connection.transaction,
     body = ct.body,
@@ -56,7 +55,10 @@ exports.hook_queue = function (next, connection) {
         'source' : {
             'subject' :  subject,
             'body_html' : '',
-            'body_text' : ''
+            'body_text' : '',
+            'reply_to' : client.reply_to,
+            'headers' : ct.header.headers,
+            'headers_raw' : ct.header.toString()
         }
     };
 
