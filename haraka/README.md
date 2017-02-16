@@ -98,12 +98,10 @@ Use [Swaks](http://www.jetmore.org/john/code/swaks/index.html) its pretty great.
 
 ## License
 
-BipIO is free for non-commercial use.
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
-[GPLv3](http://www.gnu.org/copyleft/gpl.html)
+http://www.apache.org/licenses/LICENSE-2.0
 
-Our open source license is the appropriate option if you are creating an open source application under a license compatible with the GNU GPL license v3. 
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-If you'd like to integrate BipIO with your proprietary system, GPLv3 is likely incompatible. To secure a Commercial OEM License for Bipio, please [reach us](mailto:hello@bip.io)
-
-Copyright (c) 2010-2014  [Michael Pearson](https://github.com/mjpearson)
+Copyright (c) 2017 InterDigital, Inc. All Rights Reserved
